@@ -247,16 +247,16 @@ function show(){
   score+=v[2]?1:0;setTimeout(()=>{locked=false;step++;show()},450)
  };a.appendChild(b)});
  c.appendChild(a);
- setTimeout(popupWave,1800);
+ if(timer)setTimeout(popupWave,1800);
  if(step===2)setTimeout(memoryGame,5000);
 }
 function memoryGame(){
  if(step!==2||document.querySelector(".memory"))return;
  const w=document.getElementById("workspace"),m=document.createElement("div");m.className="memory";m.style.position="absolute";m.style.left="25px";m.style.bottom="25px";m.style.width="min(500px,80%)";m.style.zIndex=55;
- const seq=[...Array(7)].map(()=>Math.floor(Math.random()*10)).join("");
+ const seq=[...Array(5)].map(()=>Math.floor(Math.random()*10)).join("");
  m.innerHTML=`<b style="color:var(--purple)">PROCESO SECUNDARIO · MEMORIA OPERATIVA</b><div class="description">Tienes 3 segundos. Memoriza la secuencia. Ignora las ventanas que aparezcan.</div><div class="sequence" id="seq">${seq}</div><div id="memInput"></div>`;
  w.appendChild(m);
- setTimeout(()=>{if(!m.isConnected)return;document.getElementById("seq").textContent="???????";document.getElementById("memInput").innerHTML=`<input id="answer" maxlength="7" placeholder="secuencia"><button onclick="checkMemory('${seq}')">VALIDAR</button>`},3000);
+ setTimeout(()=>{if(!m.isConnected)return;document.getElementById("seq").textContent="?????";document.getElementById("memInput").innerHTML=`<input id="answer" maxlength="5" placeholder="secuencia"><button onclick="checkMemory('${seq}')">VALIDAR</button>`},3000);
 }
 function checkMemory(seq){
  const a=document.getElementById("answer").value.trim(),ok=a===seq;
@@ -326,20 +326,15 @@ function tick(){
  const elapsed=300-seconds;
  const chaos=Math.min(10,1+Math.floor(elapsed/28));
 
- // La saturación también crece por el mero paso del tiempo.
- // No necesitan equivocarse para empezar a notar cansancio.
- const drift={
-   mental: elapsed<90 ? 1 : (elapsed<180 ? 2 : 3),
-   stress: elapsed<90 ? 1 : (elapsed<180 ? 2 : 3),
-   focus: elapsed<90 ? 0 : -1,
-   fatigue: elapsed<90 ? 1 : (elapsed<180 ? 2 : 3)
- };
- apply(drift);
+ // La presión depende de lo que dejas sin gestionar, no solo del tiempo.
+ const open=document.querySelectorAll(".window").length;
+ if(seconds%5===0)apply({fatigue:1}); // cansancio natural
+ if(open>=2)apply({stress:1,mental:1,focus:open>=3?-1:0}); // ventanas sin gestionar
 
  const interval=Math.max(7,18-chaos);
  if(seconds%interval===0){
    randomWindow();
-   apply({mental:2+Math.floor(chaos/3),stress:2+Math.floor(chaos/3),focus:-2,interruptions:1});
+   apply({mental:1+Math.floor(chaos/4),stress:1+Math.floor(chaos/4),focus:-1,interruptions:1});
  }
  if(chaos>=7&&seconds%9===0){randomWindow()}
  if(chaos>=9&&seconds%13===0){
@@ -353,9 +348,13 @@ function tick(){
 }
 function finish(){
  clearInterval(timer);document.getElementById("console").style.display="none";document.querySelectorAll(".window,.memory").forEach(e=>e.remove());countWindows();document.getElementById("final").style.display="block";
- const stable=S.stress<61&&S.fatigue<80&&S.focus>=40;document.getElementById("finalTitle").textContent=stable?"SISTEMA RECUPERADO":"ERROR 500: SOBRECARGA";document.getElementById("finalTitle").style.color=stable?"var(--green)":"var(--red)";
+ const perfect=S.stress<45&&S.fatigue<65&&S.focus>=60&&S.errors<=1;
+ const stable=S.stress<61&&S.fatigue<80&&S.focus>=40;
+ const ft=document.getElementById("finalTitle");
+ ft.textContent=perfect?"SISTEMA OPTIMIZADO":stable?"SISTEMA RECUPERADO":"ERROR 500: SOBRECARGA";
+ ft.style.color=perfect?"var(--cyan)":stable?"var(--green)":"var(--red)";
  document.getElementById("score").innerHTML=`Decisiones eficientes: <b>${score}</b> · Errores: <b>${S.errors}</b> · Interrupciones: <b>${S.interruptions}</b>`;
- document.getElementById("finalText").textContent=stable?"Habéis conseguido mantener el sistema operativo mientras gestionabais interrupciones y prioridades.":"Habéis llegado al final, pero el sistema sigue saturado. Las interrupciones y procesos abiertos han consumido demasiados recursos.";
+ document.getElementById("finalText").textContent=perfect?"Gestión impecable: priorizasteis, hicisteis pausas y filtrasteis las interrupciones.":stable?"Habéis conseguido mantener el sistema operativo mientras gestionabais interrupciones y prioridades.":"Habéis llegado al final, pero el sistema sigue saturado. Las interrupciones y procesos abiertos han consumido demasiados recursos.";
 }
 render();log("BOOT: SISTEMA HUMANO INICIADO — ESPERANDO INICIO MANUAL");show();
 </script>
