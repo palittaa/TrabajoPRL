@@ -73,6 +73,9 @@ h1{font-size:clamp(26px,5vw,48px);margin:7px 0}
 .memory{margin-top:14px;border:1px solid #31464e;padding:14px;background:#091115;position:relative;z-index:3}.sequence{font-size:25px;color:var(--cyan);letter-spacing:8px;text-align:center;margin:14px 0}
 .memory input{background:#05090b;color:#fff;border:1px solid #40545b;padding:10px;font:inherit}.memory button{background:#142228;color:#fff;border:1px solid #40545b;padding:10px;font:inherit;cursor:pointer}
 .final{display:none;text-align:center;padding:30px}.final h2{color:var(--green)}.restart{background:#17242a;color:#fff;border:1px solid #40555c;padding:11px 18px;font:inherit;cursor:pointer}
+.debrief{text-align:left;max-width:640px;margin:18px auto;border:1px solid var(--line);background:#091115;padding:14px;font-size:12px;line-height:1.6;color:#b8c6ca}
+.debrief h3{margin:0 0 8px;font-size:12px;color:var(--cyan);letter-spacing:2px}
+.debrief ul{padding-left:18px}.debrief li{margin:6px 0}
 @media(max-width:760px){.metrics,.counters{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:1fr}.window{width:min(330px,88%)}.notification{width:85%}}
 </style>
 </head>
@@ -120,7 +123,7 @@ h1{font-size:clamp(26px,5vw,48px);margin:7px 0}
 <div class="log" id="log"></div>
 </div>
 
-<div class="final" id="final"><h2 id="finalTitle"></h2><div id="score"></div><p id="finalText"></p><button class="restart" id="restartBtn">↻ REINICIAR SIMULACIÓN</button></div>
+<div class="final" id="final"><h2 id="finalTitle"></h2><div id="score"></div><p id="finalText"></p><div class="debrief" id="debrief"></div><button class="restart" id="restartBtn">↻ REINICIAR SIMULACIÓN</button></div>
 </div></div>
 </div>
 <div class="flash" id="flash"></div>
@@ -129,6 +132,7 @@ h1{font-size:clamp(26px,5vw,48px);margin:7px 0}
 const INITIAL={mental:72,stress:61,focus:40,fatigue:80,processes:17,interruptions:8,tasks:12,errors:0};
 let S={...INITIAL};
 let step=0,seconds=300,timer=null,locked=false,score=0,windows=0,drag={el:null,x:0,y:0};
+let ignored=0,phaseRes=[];
 
 const phases=[
 {tag:"BOOT / PROCESO 01",title:"17 CORREOS + UNA ENTREGA",text:"Tienes 17 correos sin responder y una tarea importante. No hay una respuesta marcada como correcta. Gestiona los recursos del sistema.",actions:[
@@ -171,7 +175,7 @@ function render(){
  else if(risk>265){st.textContent="● SISTEMA INESTABLE";st.className="unstable"}
  else{st.textContent="● SISTEMA ESTABLE";st.className="stable"}
 }
-function log(t,c=""){const l=document.getElementById("log");l.innerHTML+=`<div class="${c}">[${new Date().toLocaleTimeString()}] ${t}</div>`;l.scrollTop=9999}
+function log(t,c=""){if(c==="warn")ignored++;const l=document.getElementById("log");l.innerHTML+=`<div class="${c}">[${new Date().toLocaleTimeString()}] ${t}</div>`;l.scrollTop=9999}
 function flash(){const f=document.getElementById("flash");f.classList.add("on");setTimeout(()=>f.classList.remove("on"),350);document.getElementById("screen").classList.add("glitch");setTimeout(()=>document.getElementById("screen").classList.remove("glitch"),300)}
 function countWindows(){const n=document.querySelectorAll(".window").length;document.getElementById("windowCount").textContent=n;document.getElementById("popupCounter").style.display=n?"block":"none"}
 function closeWin(w){w.remove();countWindows()}
@@ -244,7 +248,7 @@ function show(){
  const a=document.createElement("div");a.className="actions";
  p.actions.forEach((v,i)=>{const b=document.createElement("button");b.className="action";b.innerHTML=v[0]+`<small>ACCIÓN ${String.fromCharCode(65+i)}</small>`;b.onclick=()=>{
   if(locked)return;locked=true;apply(v[1]);log(v[2]?"RECURSOS OPTIMIZADOS":"CARGA AÑADIDA",v[2]?"good":"bad");if(!v[2])flash();
-  score+=v[2]?1:0;setTimeout(()=>{locked=false;step++;show()},450)
+  phaseRes[step]=v[2];score+=v[2]?1:0;setTimeout(()=>{locked=false;step++;show()},450)
  };a.appendChild(b)});
  c.appendChild(a);
  if(timer)setTimeout(popupWave,1800);
@@ -280,6 +284,7 @@ function restartSimulation(){
  if(timer){clearInterval(timer);timer=null;}
  document.querySelectorAll(".window,.memory,.notification").forEach(e=>e.remove());
  S={...INITIAL};
+ ignored=0;phaseRes=[];
  step=0;seconds=300;locked=false;score=0;windows=0;drag={el:null,x:0,y:0};
  document.getElementById("time").textContent="05:00";
  document.getElementById("console").style.display="";
@@ -328,13 +333,13 @@ function tick(){
 
  // La presión depende de lo que dejas sin gestionar, no solo del tiempo.
  const open=document.querySelectorAll(".window").length;
- if(seconds%5===0)apply({fatigue:1}); // cansancio natural
+ if(seconds%4===0)apply({fatigue:1,stress:1}); // desgaste natural
  if(open>=2)apply({stress:1,mental:1,focus:open>=3?-1:0}); // ventanas sin gestionar
 
  const interval=Math.max(7,18-chaos);
  if(seconds%interval===0){
    randomWindow();
-   apply({mental:1+Math.floor(chaos/4),stress:1+Math.floor(chaos/4),focus:-1,interruptions:1});
+   apply({mental:2+Math.floor(chaos/4),stress:2+Math.floor(chaos/4),focus:-1,interruptions:1});
  }
  if(chaos>=7&&seconds%9===0){randomWindow()}
  if(chaos>=9&&seconds%13===0){
@@ -346,15 +351,31 @@ function tick(){
 }
  if(seconds<=0)finish();
 }
+function buildDebrief(perfect,stable){
+ const T=[
+  ["Correos: clasificasteis y reservasteis un bloque para responder en vez de apagar fuegos.","Correos: responder todo de golpe o ignorarlo no funciona. Clasificar y reservar un bloque reduce la carga sin perder el control."],
+  ["Concentración: protegisteis la tarea importante silenciando las notificaciones.","Concentración: con las notificaciones abiertas la atención se fragmenta. Silenciarlas protege la tarea principal."],
+  ["Prioridades: elegisteis pocas tareas y cerrasteis el resto, lo que redujo procesos y estrés.","Prioridades: avanzar en todo a la vez dispara la carga mental. Elegir 3 prioridades la reduce."],
+  ["Fatiga: hicisteis una pausa a tiempo y recuperasteis rendimiento.","Fatiga: ignorar o acelerar con la batería baja genera errores. Una pausa breve recupera más de lo que cuesta."],
+  ["Error crítico: parasteis, buscasteis el fallo y reorganizasteis, sin buscar culpables.","Error crítico: culpar o repetir lo mismo agrava el problema. Mejor analizar la causa y reorganizar."]
+ ];
+ let h=`<h3>RESOLUCIÓN</h3><div>Estrés final <b>${S.stress}%</b> · Fatiga <b>${S.fatigue}%</b> · Concentración <b>${S.focus}%</b></div><ul>`;
+ T.forEach((t,i)=>{if(phaseRes[i]===undefined)return;h+=`<li class="${phaseRes[i]?"good":"bad"}">${phaseRes[i]?"✔ ":"✖ "}${t[phaseRes[i]?0:1]}</li>`});
+ h+="</ul>";
+ if(ignored>0)h+=`<p class="warn">Cerrasteis ${ignored} ventana(s) sin gestionarlas: cerrar una alerta no la resuelve y suma carga.</p>`;
+ h+=`<p>${perfect?"Lo que marcó la diferencia fue priorizar, hacer pausas y filtrar interrupciones: las medidas básicas para prevenir la sobrecarga laboral.":stable?"Se aguantó, pero con poco margen: la sobrecarga se acumula si las pausas y la priorización llegan tarde.":"La saturación no vino de una sola decisión, sino de la acumulación de cargas e interrupciones sin gestionar. Prevenirla exige priorizar, parar a tiempo y poner límites."}</p>`;
+ return h;
+}
 function finish(){
  clearInterval(timer);document.getElementById("console").style.display="none";document.querySelectorAll(".window,.memory").forEach(e=>e.remove());countWindows();document.getElementById("final").style.display="block";
- const perfect=S.stress<45&&S.fatigue<65&&S.focus>=60&&S.errors<=1;
- const stable=S.stress<61&&S.fatigue<80&&S.focus>=40;
+ const perfect=S.stress<40&&S.fatigue<70&&S.focus>=60&&S.errors<=1;
+ const stable=S.stress<55&&S.fatigue<78&&S.focus>=45;
  const ft=document.getElementById("finalTitle");
  ft.textContent=perfect?"SISTEMA OPTIMIZADO":stable?"SISTEMA RECUPERADO":"ERROR 500: SOBRECARGA";
  ft.style.color=perfect?"var(--cyan)":stable?"var(--green)":"var(--red)";
  document.getElementById("score").innerHTML=`Decisiones eficientes: <b>${score}</b> · Errores: <b>${S.errors}</b> · Interrupciones: <b>${S.interruptions}</b>`;
  document.getElementById("finalText").textContent=perfect?"Gestión impecable: priorizasteis, hicisteis pausas y filtrasteis las interrupciones.":stable?"Habéis conseguido mantener el sistema operativo mientras gestionabais interrupciones y prioridades.":"Habéis llegado al final, pero el sistema sigue saturado. Las interrupciones y procesos abiertos han consumido demasiados recursos.";
+ document.getElementById("debrief").innerHTML=buildDebrief(perfect,stable);
 }
 render();log("BOOT: SISTEMA HUMANO INICIADO — ESPERANDO INICIO MANUAL");show();
 </script>
