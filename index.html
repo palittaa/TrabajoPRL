@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERROR 500 — CEREBRO SATURADO</title>
+<style>
+.intro-screen{position:fixed;inset:0;background:#020405;z-index:2000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.intro-screen:before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(77,225,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(77,225,255,.025) 1px,transparent 1px);background-size:38px 38px}
+.intro-scan{position:absolute;left:0;right:0;height:2px;background:#4de1ff;opacity:.25;animation:scan 3s linear infinite}
+@keyframes scan{from{top:-5%}to{top:105%}}
+.intro-box{position:relative;width:min(700px,90vw);border:1px solid #30454d;background:rgba(5,10,13,.97);box-shadow:0 0 80px #000;padding:34px;text-align:center}
+.intro-code{font-size:10px;color:#5f747c;letter-spacing:2px}.intro-error{font-size:clamp(44px,9vw,82px);font-weight:bold;color:#ff5268;text-shadow:0 0 20px rgba(255,82,104,.25);margin-top:15px}
+.intro-box h2{font-size:clamp(22px,4vw,38px);margin:0 0 8px;letter-spacing:4px}.intro-warning{font-size:12px;color:#ffd45a}
+.boot-lines{text-align:left;border:1px solid #26383f;background:#070d10;padding:14px;margin:20px 0;font-size:11px;line-height:2;color:#84979e}.boot-lines span{color:#fff}.blink{color:#ff5268!important;animation:blink .7s infinite}
+@keyframes blink{50%{opacity:.25}}
+.difficulty{display:flex;justify-content:space-between;border-top:1px solid #24343b;border-bottom:1px solid #24343b;padding:10px 0;color:#7e9299;font-size:11px}.difficulty b{color:#ff5268;letter-spacing:2px}
+.intro-instructions{font-size:11px;color:#9badb2;line-height:1.7}.start-btn{margin-top:10px;background:#0f252d;border:1px solid #4de1ff;color:#4de1ff;padding:14px 25px;font:bold 13px Consolas;cursor:pointer;letter-spacing:1px}.start-btn:hover{background:#12343e;box-shadow:0 0 18px rgba(77,225,255,.18)}
+.intro-foot{margin-top:18px;font-size:8px;color:#52656c}
+.intro-screen.hidden{animation:introOut .5s forwards}@keyframes introOut{to{opacity:0;visibility:hidden}}
+:root{--bg:#05080a;--panel:#0b1115;--line:#26373e;--text:#dce7ea;--muted:#71838b;--cyan:#4de1ff;--green:#59f08a;--yellow:#ffd45a;--red:#ff5268;--purple:#b98cff}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#05080a;color:var(--text);font-family:Consolas,"Courier New",monospace}
+body{overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.035;background:repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 4px)}
+.wrap{width:min(1150px,95vw);margin:auto;padding:22px 0 50px}
+header{text-align:center}
+.kicker{font-size:11px;letter-spacing:3px;color:var(--cyan)}
+h1{font-size:clamp(26px,5vw,48px);margin:7px 0}
+.subtitle{font-size:11px;color:var(--muted)}
+.screen{margin-top:18px;background:#080e12;border:1px solid #2b3c43;box-shadow:0 0 60px #000;border-radius:7px;overflow:hidden}
+.topbar{display:flex;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--line);font-size:12px;background:#090f13}
+.stable{color:var(--green)}.unstable{color:var(--yellow)}.critical{color:var(--red)}
+.main{padding:15px;position:relative;min-height:600px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.metric{border:1px solid var(--line);background:#0b1216;padding:10px}
+.label{font-size:10px;color:var(--muted)}.value{float:right;color:#fff}
+.bar{height:9px;background:#172127;margin-top:7px}.fill{height:100%;transition:.5s}
+.goodbar{background:var(--green)}.midbar{background:var(--yellow)}.badbar{background:var(--red)}
+.counters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:9px}
+.counter{border:1px solid var(--line);padding:8px;font-size:10px;color:#87979d;background:#090f13}.counter b{color:#fff}
+.workspace{position:relative;margin-top:14px;border:1px solid #26373e;background:#060b0e;min-height:390px;overflow:hidden}
+.workspace:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background-image:linear-gradient(#284047 1px,transparent 1px),linear-gradient(90deg,#284047 1px,transparent 1px);background-size:35px 35px}
+.console{padding:16px;position:relative;z-index:2;max-width:760px}
+.event{color:var(--cyan);font-size:11px}.title{font-size:21px;margin:7px 0}.description{font-size:13px;color:#b7c5c9;line-height:1.55}
+.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:16px}
+.action{background:#0e181d;border:1px solid #2c4048;color:#dce7ea;padding:12px;text-align:left;font:inherit;cursor:pointer}.action:hover{border-color:var(--cyan);background:#11242b}.action small{display:block;color:#6f8188;margin-top:5px}
+.log{margin-top:12px;border-top:1px solid var(--line);padding-top:8px;color:#708188;font-size:10px;max-height:105px;overflow:auto}
+.good{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--yellow)}
+/* ventanas internas */
+.window{position:absolute;z-index:20;width:330px;background:#091014;border:1px solid #53666d;box-shadow:0 12px 40px #000;animation:appear .16s ease-out}
+@keyframes appear{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+.window.urgent{border-color:var(--red);box-shadow:0 0 20px rgba(255,82,104,.18),0 12px 40px #000}
+.window.warning{border-color:var(--yellow)}
+.titlebar{height:31px;background:#111c21;border-bottom:1px solid #33464e;display:flex;align-items:center;justify-content:space-between;padding:0 7px 0 10px;cursor:move;user-select:none;font-size:10px}
+.titlebar .dots{display:flex;gap:5px}.dot{width:9px;height:9px;border-radius:50%;background:#53666d}.dot.red{background:var(--red)}.dot.yellow{background:var(--yellow)}.dot.green{background:var(--green)}
+.close{background:none;border:0;color:#94a4a9;font:inherit;cursor:pointer}.close:hover{color:#fff}
+.window-body{padding:13px;font-size:12px;line-height:1.55;color:#b8c6ca}
+.window-body b{color:#fff}
+.window-buttons{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.window-buttons button{background:#111e23;border:1px solid #344951;color:#e3eaec;padding:8px 10px;font:inherit;cursor:pointer}.window-buttons button:hover{border-color:var(--cyan)}
+.notification{position:absolute;right:13px;bottom:13px;z-index:60;width:310px;background:#0b1418;border:1px solid #4c626a;box-shadow:0 8px 30px #000;padding:12px;animation:slide .2s ease-out}
+@keyframes slide{from{transform:translateY(25px);opacity:0}to{transform:none;opacity:1}}
+.notification .nhead{font-size:10px;color:var(--cyan);margin-bottom:6px}.notification p{font-size:11px;color:#bac7ca;margin:5px 0}.nclose{float:right;background:none;border:0;color:#6f8187;cursor:pointer}
+.passive-load{position:absolute;bottom:8px;right:8px;z-index:4;color:#5f7279;font-size:9px;background:#071014;border:1px solid #26383f;padding:5px 8px}
+.passive-load b{color:var(--yellow)}
+.chaos-meter{position:absolute;top:8px;left:8px;z-index:100;background:#0c1418;border:1px solid #394b52;color:#7f9298;padding:5px 8px;font-size:9px}
+.chaos-meter b{color:var(--yellow)}
+.popup-counter{position:absolute;top:8px;right:8px;z-index:100;background:#160c0f;border:1px solid var(--red);color:#ff8b98;padding:5px 8px;font-size:10px;display:none}
+.progress{height:4px;background:#182329;margin-top:10px}.progress i{display:block;height:100%;background:var(--red);width:0}
+.glitch{animation:shake .23s}.flash{position:fixed;inset:0;z-index:800;background:var(--red);opacity:0;pointer-events:none}.flash.on{animation:flash .35s}
+@keyframes flash{0%,100%{opacity:0}30%{opacity:.13}}
+@keyframes shake{25%{transform:translateX(-4px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+.memory{margin-top:14px;border:1px solid #31464e;padding:14px;background:#091115;position:relative;z-index:3}.sequence{font-size:25px;color:var(--cyan);letter-spacing:8px;text-align:center;margin:14px 0}
+.memory input{background:#05090b;color:#fff;border:1px solid #40545b;padding:10px;font:inherit}.memory button{background:#142228;color:#fff;border:1px solid #40545b;padding:10px;font:inherit;cursor:pointer}
+.final{display:none;text-align:center;padding:30px}.final h2{color:var(--green)}.restart{background:#17242a;color:#fff;border:1px solid #40555c;padding:11px 18px;font:inherit;cursor:pointer}
+@media(max-width:760px){.metrics,.counters{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:1fr}.window{width:min(330px,88%)}.notification{width:85%}}
+</style>
+</head>
+<body>
+<div id="intro" class="intro-screen">
+  <div class="intro-scan"></div>
+  <div class="intro-box">
+    <div class="intro-code">[ HUMAN_SYSTEM_DIAGNOSTICS / v2.6.4 ]</div>
+    <div class="intro-error">ERROR 500</div>
+    <h2>CEREBRO SATURADO</h2>
+    <p class="intro-warning">⚠ SOBRECARGA COGNITIVA DETECTADA</p>
+    <div class="boot-lines">
+      <div>▸ Inicializando sistema humano...</div>
+      <div>▸ Cargando procesos cognitivos... <span>17 activos</span></div>
+      <div>▸ Detectando interrupciones... <span>8 pendientes</span></div>
+      <div>▸ Estado de concentración... <span>40%</span></div>
+      <div>▸ Predicción de fallo: <span class="blink">INEVITABLE SI NO INTERVENÍS</span></div>
+    </div>
+    <div class="difficulty">
+      <span>DIFICULTAD</span>
+      <b>██ EXTREMA</b>
+    </div>
+    <p class="intro-instructions">Tenéis 5 minutos para mantener el sistema operativo.<br>
+    No existe una única forma de resolverlo. Las decisiones tienen consecuencias.</p>
+    <button id="startBtn" class="start-btn">▶ INICIAR SIMULACIÓN</button>
+    <div class="intro-foot">NO CERRAR LA TERMINAL · NO TODAS LAS ALERTAS SON IMPORTANTES · GESTIONAD VUESTROS RECURSOS</div>
+  </div>
+</div>
+<div class="wrap">
+<header><div class="kicker">SIMULACIÓN DE SOBRECARGA · MODO INMERSIVO</div><h1>ERROR 500: CEREBRO SATURADO</h1><div class="subtitle">EL SISTEMA NO OS DICE QUÉ HACER. TENÉIS QUE MANTENERLO FUNCIONANDO.</div></header>
+<div class="screen" id="screen">
+<div class="topbar"><span id="status" class="stable">● SISTEMA ESTABLE</span><span>TIEMPO RESTANTE: <b id="time">05:00</b></span></div>
+<div class="main">
+<div class="metrics">
+<div class="metric"><div class="label">CARGA MENTAL <span class="value" id="mentalV"></span></div><div class="bar"><div id="mental" class="fill"></div></div></div>
+<div class="metric"><div class="label">ESTRÉS <span class="value" id="stressV"></span></div><div class="bar"><div id="stress" class="fill"></div></div></div>
+<div class="metric"><div class="label">CONCENTRACIÓN <span class="value" id="focusV"></span></div><div class="bar"><div id="focus" class="fill"></div></div></div>
+<div class="metric"><div class="label">FATIGA <span class="value" id="fatigueV"></span></div><div class="bar"><div id="fatigue" class="fill"></div></div></div>
+</div>
+<div class="counters"><div class="counter">PROCESOS <b id="processes"></b></div><div class="counter">INTERRUPCIONES <b id="interruptions"></b></div><div class="counter">PENDIENTES <b id="tasks"></b></div><div class="counter">ERRORES <b id="errors"></b></div></div>
+
+<div class="workspace" id="workspace">
+<div class="chaos-meter" id="chaosMeter">NIVEL DE CAOS: <b id="chaos">1</b>/10</div><div class="passive-load" id="passiveLoad">CARGA BASAL: <b>ACTIVA</b></div><div class="popup-counter" id="popupCounter">VENTANAS ACTIVAS: <b id="windowCount">0</b></div>
+<div class="console" id="console"></div>
+<div class="log" id="log"></div>
+</div>
+
+<div class="final" id="final"><h2 id="finalTitle"></h2><div id="score"></div><p id="finalText"></p><button class="restart" id="restartBtn">↻ REINICIAR SIMULACIÓN</button></div>
+</div></div>
+</div>
+<div class="flash" id="flash"></div>
+
+<script>
+const INITIAL={mental:72,stress:61,focus:40,fatigue:80,processes:17,interruptions:8,tasks:12,errors:0};
+let S={...INITIAL};
+let step=0,seconds=300,timer=null,locked=false,score=0,windows=0,drag={el:null,x:0,y:0};
+
+const phases=[
+{tag:"BOOT / PROCESO 01",title:"17 CORREOS + UNA ENTREGA",text:"Tienes 17 correos sin responder y una tarea importante. No hay una respuesta marcada como correcta. Gestiona los recursos del sistema.",actions:[
+["ABRIR Y RESPONDER LOS 17",{mental:9,stress:8,focus:-11,fatigue:5,processes:5,interruptions:3,tasks:-4,errors:1},false],
+["CLASIFICAR Y BLOQUEAR UN MOMENTO PARA RESPONDER",{mental:-10,stress:-8,focus:10,fatigue:-4,processes:-5,interruptions:-4,tasks:-3},true],
+["DEJAR TODOS LOS CORREOS Y HACER LA ENTREGA",{mental:-2,stress:4,focus:5,fatigue:1,processes:-2,interruptions:1,tasks:-2},false]]},
+{tag:"PROCESO 02",title:"TAREA PRINCIPAL: 25 MINUTOS DE CONCENTRACIÓN",text:"Intentáis empezar. El sistema sabe que necesitáis concentración. No sabe que está a punto de recibir interrupciones.",actions:[
+["ACTIVAR MODO CONCENTRACIÓN",{mental:-7,stress:-6,focus:9,fatigue:-2,processes:-3,interruptions:-3},true],
+["EMPEZAR CON TODAS LAS NOTIFICACIONES ABIERTAS",{mental:6,stress:6,focus:-8,fatigue:4,processes:3,interruptions:2},false]]},
+{tag:"PROCESO 03",title:"12 TAREAS ABIERTAS",text:"Todas parecen importantes. El sistema tiene demasiados procesos simultáneos.",actions:[
+["AVANZAR UN POCO EN LAS 12",{mental:10,stress:9,focus:-13,fatigue:7,processes:5,interruptions:1,tasks:-3},false],
+["ELEGIR 3 PRIORIDADES Y CERRAR EL RESTO TEMPORALMENTE",{mental:-11,stress:-10,focus:11,fatigue:-5,processes:-6,interruptions:-2,tasks:-3},true],
+["HACER PRIMERO LAS MÁS FÁCILES",{mental:-2,stress:-2,focus:1,fatigue:-1,processes:-2,tasks:-2},false]]},
+{tag:"PROCESO 04",title:"BATERÍA AL 12%",text:"La concentración cae. Aparecen pequeños errores. El sistema sigue pidiendo rendimiento.",actions:[
+["IGNORAR LA FATIGA",{mental:8,stress:9,focus:-11,fatigue:13,processes:2,tasks:-2,errors:2},false],
+["PAUSA BREVE + AGUA + VOLVER A UNA TAREA",{mental:-10,stress:-10,focus:12,fatigue:-14,processes:-2,interruptions:-1,tasks:-2},true],
+["ACELERAR PARA TERMINAR",{mental:10,stress:12,focus:-10,fatigue:10,processes:3,tasks:-4,errors:2},false]]},
+{tag:"PROCESO 05",title:"ERROR CRÍTICO",text:"Una tarea importante ha salido mal. Nadie sabe todavía por qué. El equipo tiene presión para arreglarla YA.",actions:[
+["CULPAR A QUIEN LA HIZO",{mental:7,stress:10,focus:-9,fatigue:5,interruptions:3,errors:1},false],
+["PARAR, IDENTIFICAR EL FALLO Y REORGANIZAR",{mental:-11,stress:-12,focus:10,fatigue:-5,processes:-4,interruptions:-3,errors:-1},true],
+["REPETIR EXACTAMENTE LO MISMO",{mental:7,stress:8,focus:-8,fatigue:6,errors:2},false]]}
+];
+
+function clamp(x){return Math.max(0,Math.min(100,Math.round(x)))}
+function apply(ch){
+ for(const k in ch)if(k in S){
+  if(["processes","interruptions","tasks","errors"].includes(k))S[k]=Math.max(0,S[k]+ch[k]);
+  else S[k]=clamp(S[k]+ch[k]);
+ }
+ render();
+}
+function render(){
+ for(const k of ["mental","stress","focus","fatigue"]){
+  const e=document.getElementById(k);e.style.width=S[k]+"%";document.getElementById(k+"V").textContent=S[k]+"%";
+  e.className="fill "+((k==="focus")?(S[k]<30?"badbar":S[k]<55?"midbar":"goodbar"):(S[k]>75?"badbar":S[k]>55?"midbar":"goodbar"));
+ }
+ for(const k of ["processes","interruptions","tasks","errors"])document.getElementById(k).textContent=S[k];
+ const risk=S.mental+S.stress+S.fatigue+(100-S.focus),st=document.getElementById("status");
+ if(risk>320){st.textContent="● ERROR CRÍTICO";st.className="critical"}
+ else if(risk>265){st.textContent="● SISTEMA INESTABLE";st.className="unstable"}
+ else{st.textContent="● SISTEMA ESTABLE";st.className="stable"}
+}
+function log(t,c=""){const l=document.getElementById("log");l.innerHTML+=`<div class="${c}">[${new Date().toLocaleTimeString()}] ${t}</div>`;l.scrollTop=9999}
+function flash(){const f=document.getElementById("flash");f.classList.add("on");setTimeout(()=>f.classList.remove("on"),350);document.getElementById("screen").classList.add("glitch");setTimeout(()=>document.getElementById("screen").classList.remove("glitch"),300)}
+function countWindows(){const n=document.querySelectorAll(".window").length;document.getElementById("windowCount").textContent=n;document.getElementById("popupCounter").style.display=n?"block":"none"}
+function closeWin(w){w.remove();countWindows()}
+function createWindow({title,body,kind="normal",x,y,buttons=[],autoClose=false}){
+ const w=document.createElement("div");w.className="window "+kind;w.style.left=x+"px";w.style.top=y+"px";
+ w.innerHTML=`<div class="titlebar"><span>${title}</span><span class="dots"><i class="dot red"></i><i class="dot yellow"></i><i class="dot green"></i><button class="close">×</button></span></div><div class="window-body">${body}<div class="window-buttons">${buttons.map((b,i)=>`<button data-i="${i}">${b.label}</button>`).join("")}</div></div>`;
+ document.getElementById("workspace").appendChild(w);countWindows();
+ w.querySelector(".close").onclick=()=>{closeWin(w);apply({mental:3,stress:3,focus:-3,interruptions:1});log("VENTANA CERRADA SIN GESTIONAR","warn")};
+ buttons.forEach((b,i)=>w.querySelectorAll(".window-buttons button")[i].onclick=()=>{b.action();closeWin(w)});
+ makeDraggable(w);
+ if(autoClose)setTimeout(()=>{if(w.isConnected)closeWin(w)},7000);
+ return w;
+}
+function makeDraggable(w){
+ const bar=w.querySelector(".titlebar");bar.onmousedown=e=>{drag.el=w;drag.x=e.clientX-w.offsetLeft;drag.y=e.clientY-w.offsetTop};
+}
+document.addEventListener("mousemove",e=>{if(drag.el){const ws=document.getElementById("workspace");let x=e.clientX-drag.x,y=e.clientY-drag.y;x=Math.max(0,Math.min(ws.clientWidth-drag.el.offsetWidth,x));y=Math.max(0,Math.min(ws.clientHeight-drag.el.offsetHeight,y));drag.el.style.left=x+"px";drag.el.style.top=y+"px"}});
+document.addEventListener("mouseup",()=>drag.el=null);
+
+function randomWindow(){
+ const ws=document.getElementById("workspace"), chaos=Math.min(10,1+Math.floor((300-seconds)/28));
+ document.getElementById("chaos").textContent=chaos;
+ const x=Math.max(8,Math.random()*(ws.clientWidth-350)),y=45+Math.random()*Math.max(20,ws.clientHeight-220);
+ const r=Math.random();
+
+ if(r<.20){
+  createWindow({title:"MAIL.EXE",kind:"warning",x,y,body:"<b>⚠ 17 mensajes pendientes</b><br><br>Uno acaba de llegar marcado como <b>URGENTE</b>.<br>Además, hay 3 respuestas que requieren seguimiento.",buttons:[
+   {label:"ABRIR URGENTE",action:()=>{apply({mental:6,stress:6,focus:-6,interruptions:2,processes:2});log("CORREO URGENTE ABIERTO","bad")}},
+   {label:"POSPONER",action:()=>{apply({mental:-3,stress:-3,focus:3,interruptions:-1});log("CORREO POSPUESTO","good")}},
+   {label:"CLASIFICAR TODO",action:()=>{apply({mental:-5,stress:-5,focus:5,processes:-2,interruptions:-2,tasks:-1});log("BANDEJA ORGANIZADA","good")}}
+  ]});
+ }else if(r<.38){
+  createWindow({title:"CHAT · MARCOS",x,y,body:"<b>Marcos:</b> «¿Tienes un minuto? Es una cosa rápida.»<br><br>Después añade: «Bueno, en realidad son tres cosas».",buttons:[
+   {label:"AHORA",action:()=>{apply({mental:6,stress:7,focus:-8,processes:3,interruptions:3});log("CHAT ATENDIDO: 3 TAREAS EXTRA","bad")}},
+   {label:"EN 10 MIN",action:()=>{apply({mental:-5,stress:-4,focus:6,interruptions:-2});log("LÍMITE DE INTERRUPCIÓN ESTABLECIDO","good")}},
+   {label:"NO DISPONIBLE",action:()=>{apply({stress:-2,focus:2,interruptions:-2});log("INTERRUPCIÓN RECHAZADA","good")}}
+  ]});
+ }else if(r<.56){
+  createWindow({title:"SYSTEM WARNING",kind:"urgent",x,y,body:"<b>⚠ PROCESO NO RESPONDE</b><br><br><code>CONCENTRACION.EXE</code> está utilizando demasiados recursos.<br><br>El sistema recomienda NO cerrar procesos esenciales.",buttons:[
+   {label:"FINALIZAR",action:()=>{apply({mental:-3,stress:5,focus:-13,fatigue:6,errors:1});log("PROCESO CERRADO FORZOSAMENTE","bad");flash()}},
+   {label:"ESPERAR",action:()=>{apply({mental:-6,stress:-5,focus:5});log("PROCESO CONSERVADO","good")}},
+   {label:"DIAGNOSTICAR",action:()=>{apply({mental:-4,stress:-3,focus:4,interruptions:-1});log("PROCESO DIAGNOSTICADO","good")}}
+  ]});
+ }else if(r<.74){
+  createWindow({title:"CALENDAR.EXE",kind:"warning",x,y,body:"<b>NUEVA REUNIÓN</b><br><br>Se ha añadido automáticamente una reunión en 5 minutos.<br><br>¿Qué haces con ella?",buttons:[
+   {label:"ACEPTAR",action:()=>{apply({mental:6,stress:7,focus:-8,processes:3,tasks:1});log("REUNIÓN ACEPTADA","bad")}},
+   {label:"REPROGRAMAR",action:()=>{apply({mental:-4,stress:-4,focus:4,processes:-1});log("REUNIÓN REPROGRAMADA","good")}},
+   {label:"REVISAR SI ES NECESARIA",action:()=>{apply({mental:-5,stress:-4,focus:5,interruptions:-1});log("REUNIÓN FILTRADA","good")}}
+  ]});
+ }else{
+  createWindow({title:"SECURITY ALERT",kind:"urgent",x,y,body:"<b>⚠ DEMASIADAS TAREAS SIMULTÁNEAS</b><br><br>El sistema detecta que estáis intentando mantener <b>"+S.processes+" procesos</b> activos.<br><br>Se recomienda reducir la carga.",buttons:[
+   {label:"IGNORAR",action:()=>{apply({mental:8,stress:8,focus:-9,fatigue:6,errors:1});log("ALERTA IGNORADA","bad");flash()}},
+   {label:"REDUCIR PROCESOS",action:()=>{apply({mental:-8,stress:-7,focus:8,fatigue:-3,processes:-5,interruptions:-2});log("PROCESOS REDUCIDOS","good")}}
+  ]});
+ }
+}
+function popupWave(){
+ if(step>=phases.length)return;
+ const chaos=Math.min(10,1+Math.floor((300-seconds)/28));
+ randomWindow();
+ if(chaos>=3)setTimeout(()=>{if(seconds>0&&step<phases.length)randomWindow()},Math.max(700,Math.random()*2500+700));
+ if(chaos>=6)setTimeout(()=>{if(seconds>0&&step<phases.length)randomWindow()},Math.max(500,Math.random()*2200+500));
+ if(chaos>=8)setTimeout(()=>{if(seconds>0&&step<phases.length)randomWindow()},Math.max(400,Math.random()*1600+400));
+}
+
+function show(){
+ if(step>=phases.length){finish();return}
+ const p=phases[step],c=document.getElementById("console");
+ c.innerHTML=`<div class="event">${p.tag}</div><div class="title">${p.title}</div><div class="description">${p.text}</div>`;
+ const a=document.createElement("div");a.className="actions";
+ p.actions.forEach((v,i)=>{const b=document.createElement("button");b.className="action";b.innerHTML=v[0]+`<small>ACCIÓN ${String.fromCharCode(65+i)}</small>`;b.onclick=()=>{
+  if(locked)return;locked=true;apply(v[1]);log(v[2]?"RECURSOS OPTIMIZADOS":"CARGA AÑADIDA",v[2]?"good":"bad");if(!v[2])flash();
+  score+=v[2]?1:0;setTimeout(()=>{locked=false;step++;show()},450)
+ };a.appendChild(b)});
+ c.appendChild(a);
+ setTimeout(popupWave,1800);
+ if(step===2)setTimeout(memoryGame,5000);
+}
+function memoryGame(){
+ if(step!==2||document.querySelector(".memory"))return;
+ const w=document.getElementById("workspace"),m=document.createElement("div");m.className="memory";m.style.position="absolute";m.style.left="25px";m.style.bottom="25px";m.style.width="min(500px,80%)";m.style.zIndex=55;
+ const seq=[...Array(7)].map(()=>Math.floor(Math.random()*10)).join("");
+ m.innerHTML=`<b style="color:var(--purple)">PROCESO SECUNDARIO · MEMORIA OPERATIVA</b><div class="description">Tienes 3 segundos. Memoriza la secuencia. Ignora las ventanas que aparezcan.</div><div class="sequence" id="seq">${seq}</div><div id="memInput"></div>`;
+ w.appendChild(m);
+ setTimeout(()=>{if(!m.isConnected)return;document.getElementById("seq").textContent="???????";document.getElementById("memInput").innerHTML=`<input id="answer" maxlength="7" placeholder="secuencia"><button onclick="checkMemory('${seq}')">VALIDAR</button>`},3000);
+}
+function checkMemory(seq){
+ const a=document.getElementById("answer").value.trim(),ok=a===seq;
+ apply(ok?{mental:-9,stress:-7,focus:9,fatigue:-3,interruptions:-1}:{mental:10,stress:10,focus:-12,fatigue:7,interruptions:2,errors:1});
+ score+=ok?1:0;log(ok?"MEMORIA OPERATIVA: OK":"MEMORIA OPERATIVA: FALLO",ok?"good":"bad");document.querySelector(".memory")?.remove();
+}
+function startSimulation(){
+ const intro=document.getElementById("intro");
+ if(intro){
+   intro.classList.add("hidden");
+   setTimeout(()=>{if(intro.isConnected)intro.remove()},550);
+ }
+ if(timer) clearInterval(timer);
+ timer=setInterval(tick,1000);
+ log("USUARIO: SIMULACIÓN INICIADA");
+}
+
+document.getElementById("startBtn").addEventListener("click",startSimulation);
+
+function restartSimulation(){
+ if(timer){clearInterval(timer);timer=null;}
+ document.querySelectorAll(".window,.memory,.notification").forEach(e=>e.remove());
+ S={...INITIAL};
+ step=0;seconds=300;locked=false;score=0;windows=0;drag={el:null,x:0,y:0};
+ document.getElementById("time").textContent="05:00";
+ document.getElementById("console").style.display="";
+ document.getElementById("final").style.display="none";
+ document.getElementById("log").innerHTML="";
+ document.getElementById("popupCounter").style.display="none";
+ document.getElementById("windowCount").textContent="0";
+ document.getElementById("chaos").textContent="1";
+ render();
+ log("BOOT: SISTEMA HUMANO REINICIADO");
+ show();
+
+ // Recreate intro screen so the player must explicitly start again.
+ const intro=document.createElement("div");
+ intro.id="intro";
+ intro.className="intro-screen";
+ intro.innerHTML=`<div class="intro-scan"></div>
+ <div class="intro-box">
+   <div class="intro-code">[ HUMAN_SYSTEM_DIAGNOSTICS / v2.6.4 ]</div>
+   <div class="intro-error">ERROR 500</div>
+   <h2>CEREBRO SATURADO</h2>
+   <p class="intro-warning">⚠ SOBRECARGA COGNITIVA DETECTADA</p>
+   <div class="boot-lines">
+    <div>▸ Inicializando sistema humano...</div>
+    <div>▸ Cargando procesos cognitivos... <span>17 activos</span></div>
+    <div>▸ Detectando interrupciones... <span>8 pendientes</span></div>
+    <div>▸ Estado de concentración... <span>40%</span></div>
+    <div>▸ Predicción de fallo: <span class="blink">INEVITABLE SI NO INTERVENÍS</span></div>
+   </div>
+   <div class="difficulty"><span>DIFICULTAD</span><b>██ EXTREMA</b></div>
+   <p class="intro-instructions">Tenéis 5 minutos para mantener el sistema operativo.<br>No existe una única forma de resolverlo. Las decisiones tienen consecuencias.</p>
+   <button id="startBtn2" class="start-btn">▶ INICIAR SIMULACIÓN</button>
+   <div class="intro-foot">NO CERRAR LA TERMINAL · NO TODAS LAS ALERTAS SON IMPORTANTES · GESTIONAD VUESTROS RECURSOS</div>
+ </div>`;
+ document.body.appendChild(intro);
+ document.getElementById("startBtn2").addEventListener("click",startSimulation);
+}
+
+document.getElementById("restartBtn").addEventListener("click",restartSimulation);
+function tick(){
+ seconds--;document.getElementById("time").textContent=`${String(Math.max(0,Math.floor(seconds/60))).padStart(2,"0")}:${String(Math.max(0,seconds%60)).padStart(2,"0")}`;
+ // El sistema genera interrupciones espontáneas cada cierto tiempo.
+ if(seconds>0){
+ const elapsed=300-seconds;
+ const chaos=Math.min(10,1+Math.floor(elapsed/28));
+
+ // La saturación también crece por el mero paso del tiempo.
+ // No necesitan equivocarse para empezar a notar cansancio.
+ const drift={
+   mental: elapsed<90 ? 1 : (elapsed<180 ? 2 : 3),
+   stress: elapsed<90 ? 1 : (elapsed<180 ? 2 : 3),
+   focus: elapsed<90 ? 0 : -1,
+   fatigue: elapsed<90 ? 1 : (elapsed<180 ? 2 : 3)
+ };
+ apply(drift);
+
+ const interval=Math.max(7,18-chaos);
+ if(seconds%interval===0){
+   randomWindow();
+   apply({mental:2+Math.floor(chaos/3),stress:2+Math.floor(chaos/3),focus:-2,interruptions:1});
+ }
+ if(chaos>=7&&seconds%9===0){randomWindow()}
+ if(chaos>=9&&seconds%13===0){
+   flash();
+   document.getElementById("screen").classList.add("glitch");
+   setTimeout(()=>document.getElementById("screen").classList.remove("glitch"),300);
+   apply({mental:3,stress:4,focus:-3,fatigue:2});
+ }
+}
+ if(seconds<=0)finish();
+}
+function finish(){
+ clearInterval(timer);document.getElementById("console").style.display="none";document.querySelectorAll(".window,.memory").forEach(e=>e.remove());countWindows();document.getElementById("final").style.display="block";
+ const stable=S.stress<61&&S.fatigue<80&&S.focus>=40;document.getElementById("finalTitle").textContent=stable?"SISTEMA RECUPERADO":"ERROR 500: SOBRECARGA";document.getElementById("finalTitle").style.color=stable?"var(--green)":"var(--red)";
+ document.getElementById("score").innerHTML=`Decisiones eficientes: <b>${score}</b> · Errores: <b>${S.errors}</b> · Interrupciones: <b>${S.interruptions}</b>`;
+ document.getElementById("finalText").textContent=stable?"Habéis conseguido mantener el sistema operativo mientras gestionabais interrupciones y prioridades.":"Habéis llegado al final, pero el sistema sigue saturado. Las interrupciones y procesos abiertos han consumido demasiados recursos.";
+}
+render();log("BOOT: SISTEMA HUMANO INICIADO — ESPERANDO INICIO MANUAL");show();
+</script>
+</body>
+</html>
